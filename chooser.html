@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link href="https://fonts.googleapis.com/css2?family=Dosis:wght@400;600;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+    <title>Chooser</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        body {
+            background: #ffffff;
+            width: 100vw;
+            height: 100dvh;
+            overflow: hidden;
+            touch-action: none;
+            font-family: 'Dosis', -apple-system, sans-serif;
+            transition: background 0.6s ease;
+        }
+
+        #message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #2d1a00;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.75rem;
+            text-align: center;
+            padding: 20px;
+            pointer-events: none;
+            line-height: 2;
+            transition: opacity 0.4s;
+        }
+
+        #countdown {
+            position: absolute;
+            top: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 64px;
+            height: 64px;
+            border: 4px solid #2d1a00;
+        }
+
+        #countdown-text {
+            color: #2d1a00;
+            font-size: 1.2rem;
+            font-family: 'Press Start 2P', monospace;
+            line-height: 1;
+        }
+
+        #countdown-bar {
+            position: absolute;
+            bottom: -4px;
+            left: -4px;
+            height: 4px;
+            background: #2d1a00;
+            width: 100%;
+            transition: width 0.1s linear;
+        }
+
+        #vignette {
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(ellipse at center, transparent 40%, rgba(45, 26, 0, 0.22) 100%);
+            pointer-events: none;
+            z-index: 2;
+            transition: background 0.6s ease;
+        }
+
+        .corner {
+            position: fixed;
+            pointer-events: none;
+            z-index: 3;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            transition: opacity 0.4s ease;
+        }
+        #corner-tl { top: 0; left: 0; }
+        #corner-tr { top: 0; right: 0; transform: scaleX(-1); }
+        #corner-bl { bottom: 0; left: 0; transform: scaleY(-1); }
+        #corner-br { bottom: 0; right: 0; transform: scale(-1, -1); }
+
+        .dot {
+            position: absolute;
+            z-index: 5;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            transform: translate(-50%, -50%) scale(0);
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+                        opacity 0.5s ease,
+                        filter 0.08s ease;
+            opacity: 1;
+        }
+
+        .dot.active {
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .dot.winner {
+            animation: winner-burst 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards,
+                       winner-pulse 0.8s ease-in-out 0.5s infinite alternate;
+        }
+
+        .dot.loser {
+            animation: loser-out 0.5s ease-in forwards;
+        }
+
+        @keyframes winner-burst {
+            0%   { transform: translate(-50%, -50%) scale(1);   }
+            50%  { transform: translate(-50%, -50%) scale(1.7); }
+            75%  { transform: translate(-50%, -50%) scale(1.1); }
+            100% { transform: translate(-50%, -50%) scale(1.3); }
+        }
+
+        @keyframes winner-pulse {
+            from { transform: translate(-50%, -50%) scale(1.3); }
+            to   { transform: translate(-50%, -50%) scale(1.6); }
+        }
+
+        @keyframes loser-out {
+            0%   { transform: translate(-50%, -50%) scale(1);   opacity: 1; }
+            30%  { transform: translate(-50%, -50%) scale(1.2); opacity: 0.6; }
+            100% { transform: translate(-50%, -50%) scale(0);   opacity: 0; }
+        }
+
+        @keyframes screen-flash {
+            0%   { opacity: 0; }
+            15%  { opacity: 0.55; }
+            100% { opacity: 0; }
+        }
+
+        #reset-btn {
+            position: absolute;
+            bottom: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #000000;
+            color: white;
+            border: 4px solid #ffffff;
+            padding: 14px 36px;
+            border-radius: 0;
+            font-size: 0.7rem;
+            font-family: 'Press Start 2P', monospace;
+            display: none;
+            cursor: pointer;
+            z-index: 10;
+            pointer-events: none;
+        }
+        #welcome-overlay {
+            position: fixed;
+            inset: 0;
+            background: #ffffff;
+            z-index: 200;
+            transition: opacity 0.5s ease;
+        }
+
+        #title-group {
+            position: absolute;
+            top: 33.33%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+
+        #mascot-group {
+            position: absolute;
+            top: 66.67%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #speech-bubble {
+            background: #ffffff;
+            color: #000000;
+            padding: 14px 24px;
+            border: 4px solid #000000;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.9rem;
+            line-height: 1.8;
+            position: relative;
+            margin-bottom: 28px;
+            border-radius: 0;
+            text-align: center;
+            transform: translateX(-55px);
+        }
+
+        #speech-bubble::before {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 0;
+            bottom: -24px;
+            right: 18px;
+            border-top: 24px solid #000000;
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
+        }
+
+        #speech-bubble::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 0;
+            bottom: -16px;
+            right: 22px;
+            border-top: 16px solid #ffffff;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+        }
+
+        #game-title {
+            font-family: 'Press Start 2P', monospace;
+            color: #D97757;
+            font-size: 3.2rem;
+            margin-top: 0;
+            margin-bottom: 10px;
+            text-align: center;
+            text-shadow:
+                -2px -2px 0 #2d1a00,
+                 0px -2px 0 #2d1a00,
+                 2px -2px 0 #2d1a00,
+                -2px  0px 0 #2d1a00,
+                 2px  0px 0 #2d1a00,
+                -2px  2px 0 #2d1a00,
+                 0px  2px 0 #2d1a00,
+                 2px  2px 0 #2d1a00;
+        }
+
+        #game-subtitle {
+            font-family: 'Press Start 2P', monospace;
+            color: #2d1a00;
+            font-size: 0.78rem;
+            margin-bottom: 16px;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        #mascot-canvas {
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            animation: mascot-float 2s ease-in-out infinite;
+        }
+
+        @keyframes mascot-float {
+            0%, 100% { transform: translateY(0px); }
+            50%       { transform: translateY(-14px); }
+        }
+
+        #welcome-tap {
+            position: absolute;
+            bottom: 110px;
+            left: 50%;
+            transform: translateX(-50%);
+            white-space: nowrap;
+            color: #2d1a00;
+            font-size: 0.5rem;
+            font-family: 'Press Start 2P', monospace;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="welcome-overlay">
+        <div id="title-group">
+            <p id="game-title">Chooser</p>
+        </div>
+        <div id="mascot-group">
+            <div id="speech-bubble"><span id="greeting-text"></span></div>
+            <canvas id="mascot-canvas" width="144" height="108"></canvas>
+        </div>
+        <p id="welcome-tap">Tippen zum Starten</p>
+    </div>
+
+    <div id="vignette"></div>
+    <canvas id="corner-tl" class="corner" width="80" height="80"></canvas>
+    <canvas id="corner-tr" class="corner" width="80" height="80"></canvas>
+    <canvas id="corner-bl" class="corner" width="80" height="80"></canvas>
+    <canvas id="corner-br" class="corner" width="80" height="80"></canvas>
+
+    <div id="message"></div>
+
+    <div id="countdown">
+        <div id="countdown-text"></div>
+        <div id="countdown-bar"></div>
+    </div>
+
+    <button id="reset-btn">Nochmal</button>
+
+    <script>
+        // ── Welcome screen ────────────────────────────────────────────
+
+        const GREETINGS = [
+            'Hallo!', 'Hello!', 'Bonjour!', 'Hola!', 'Ciao!',
+            'Olá!', 'こんにちは!', '你好!', '안녕하세요!', 'Привет!',
+            'مرحبا!', 'Hej!', 'Merhaba!', 'Cześć!', 'Hoi!',
+            'Γεια σου!', 'Ahoj!', 'Sawubona!'
+        ];
+
+        let greetingIndex = Math.floor(Math.random() * GREETINGS.length);
+        const greetingEl = document.getElementById('greeting-text');
+
+        function updateGreeting() {
+            greetingEl.style.opacity = '0';
+            setTimeout(() => {
+                greetingIndex = (greetingIndex + 1) % GREETINGS.length;
+                greetingEl.textContent = GREETINGS[greetingIndex];
+                greetingEl.style.opacity = '1';
+            }, 300);
+        }
+
+        greetingEl.style.transition = 'opacity 0.3s ease';
+        greetingEl.textContent = GREETINGS[greetingIndex];
+        setInterval(updateGreeting, 2000);
+
+        const mCanvas = document.getElementById('mascot-canvas');
+        const mCtx = mCanvas.getContext('2d');
+
+        let mascotPose = 'normal'; // 'normal' | 'wave'
+        let mascotBlink = false;
+
+        function drawMascot() {
+            mCtx.clearRect(0, 0, mCanvas.width, mCanvas.height);
+            const P = 6;
+            const C = '#D97757';
+            const E = mascotBlink ? '#D97757' : '#2d1a00';
+            const W = mascotPose === 'wave';
+            // 24 Spalten × 18 Reihen (3 Extra-Reihen oben für den Winke-Arm)
+            // 1 = Body/Arm, 2 = Augen, 0 = transparent
+            const rows = [
+                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,W?1:0,W?1:0,W?1:0],
+                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,W?1:0,W?1:0,W?1:0],
+                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,W?1:0,W?1:0,W?1:0],
+                [0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0],
+                [0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0],
+                [0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0],
+                [0,0,0,1,1,1,1,2,2,1,1,1,1,1,1,2,2,1,1,1,1,0,0,0],
+                [0,0,0,1,1,1,1,2,2,1,1,1,1,1,1,2,2,1,1,1,1,0,0,0],
+                [0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0],
+                [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,W?0:1,W?0:1,W?0:1],
+                [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,W?0:1,W?0:1,W?0:1],
+                [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,W?0:1,W?0:1,W?0:1],
+                [0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0],
+                [0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0],
+                [0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0],
+                [0,0,0,0,1,1,0,1,1,0,0,0,0,0,0,1,1,0,1,1,0,0,0,0],
+                [0,0,0,0,1,1,0,1,1,0,0,0,0,0,0,1,1,0,1,1,0,0,0,0],
+                [0,0,0,0,1,1,0,1,1,0,0,0,0,0,0,1,1,0,1,1,0,0,0,0],
+            ];
+            rows.forEach((row, y) => {
+                row.forEach((val, x) => {
+                    if (val === 0) return;
+                    mCtx.fillStyle = val === 2 ? E : C;
+                    mCtx.fillRect(x * P, y * P, P, P);
+                });
+            });
+        }
+
+        drawMascot();
+
+        // Blinzeln
+        setInterval(() => {
+            mascotBlink = true;
+            drawMascot();
+            setTimeout(() => { mascotBlink = false; drawMascot(); }, 150);
+        }, 2500 + Math.random() * 1500);
+
+        // Winken
+        function doWave() {
+            mascotPose = 'wave';
+            drawMascot();
+            setTimeout(() => {
+                mascotPose = 'normal';
+                drawMascot();
+                setTimeout(doWave, 2800 + Math.random() * 1800);
+            }, 700);
+        }
+        setTimeout(doWave, 1200);
+
+        function dismissWelcome() {
+            const overlay = document.getElementById('welcome-overlay');
+            if (!overlay) return;
+            mascotPose = 'wave';
+            drawMascot();
+            const mc = document.getElementById('mascot-canvas');
+            mc.style.animationPlayState = 'paused';
+            mc.style.transition = 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)';
+            mc.style.transform = 'scale(1.18)';
+            setTimeout(() => {
+                overlay.style.opacity = '0';
+                setTimeout(() => overlay.remove(), 500);
+            }, 220);
+        }
+
+        document.getElementById('welcome-overlay').addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+        });
+        document.getElementById('welcome-overlay').addEventListener('touchend', (e) => {
+            e.stopPropagation();
+            dismissWelcome();
+        });
+        document.getElementById('welcome-overlay').addEventListener('click', dismissWelcome);
+
+        // ── App ───────────────────────────────────────────────────────
+
+        function vibrate(pattern) {
+            if (navigator.vibrate) navigator.vibrate(pattern);
+        }
+
+        let audioCtx = null;
+        function getAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            return audioCtx;
+        }
+        const TICK_SCALE = [262, 294, 330, 392, 440, 523, 587, 659]; // C4–E5
+
+        function playTick(count) {
+            try {
+                const ctx = getAudio();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain); gain.connect(ctx.destination);
+                osc.type = 'sine';
+                osc.frequency.value = TICK_SCALE[Math.min((count || 1) - 1, TICK_SCALE.length - 1)];
+                gain.gain.setValueAtTime(0, ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(1.0, ctx.currentTime + 0.005);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.07);
+                osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.07);
+            } catch(e) {}
+        }
+        function playFlash(progress) {
+            try {
+                const ctx = getAudio();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain); gain.connect(ctx.destination);
+                osc.type = 'sine';
+                osc.frequency.value = 180 + progress * 420;
+                const vol = 0.07 + progress * 0.13;
+                const dur = 0.055 - progress * 0.025;
+                gain.gain.setValueAtTime(vol, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+                osc.start(ctx.currentTime); osc.stop(ctx.currentTime + dur);
+            } catch(e) {}
+        }
+
+        function playSuspense() {
+            try {
+                const ctx = getAudio();
+
+                // Downward sweep: mid → tief (dramatischer Einstieg)
+                const sweep = ctx.createOscillator();
+                const sweepGain = ctx.createGain();
+                sweep.connect(sweepGain); sweepGain.connect(ctx.destination);
+                sweep.type = 'sine';
+                sweep.frequency.setValueAtTime(320, ctx.currentTime);
+                sweep.frequency.exponentialRampToValueAtTime(55, ctx.currentTime + 0.9);
+                sweepGain.gain.setValueAtTime(0.38, ctx.currentTime);
+                sweepGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.6);
+                sweep.start(ctx.currentTime); sweep.stop(ctx.currentTime + 1.6);
+
+                // Tief-Drone: baut Spannung auf
+                const drone = ctx.createOscillator();
+                const droneGain = ctx.createGain();
+                drone.connect(droneGain); droneGain.connect(ctx.destination);
+                drone.type = 'sine'; drone.frequency.value = 55;
+                droneGain.gain.setValueAtTime(0, ctx.currentTime);
+                droneGain.gain.linearRampToValueAtTime(0.22, ctx.currentTime + 1.0);
+                droneGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 3.2);
+                drone.start(ctx.currentTime); drone.stop(ctx.currentTime + 3.2);
+            } catch(e) {}
+        }
+
+        function playReveal() {
+            try {
+                const ctx = getAudio();
+                const comp = ctx.createDynamicsCompressor();
+                comp.threshold.value = -6; comp.ratio.value = 4;
+                comp.connect(ctx.destination);
+
+                // Sub boom
+                const sub = ctx.createOscillator();
+                const subGain = ctx.createGain();
+                sub.connect(subGain); subGain.connect(comp);
+                sub.type = 'sine'; sub.frequency.value = 55;
+                subGain.gain.setValueAtTime(0.9, ctx.currentTime);
+                subGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.5);
+                sub.start(ctx.currentTime); sub.stop(ctx.currentTime + 1.5);
+
+                // Pitch-drop impact thud
+                const thud = ctx.createOscillator();
+                const thudGain = ctx.createGain();
+                thud.connect(thudGain); thudGain.connect(comp);
+                thud.type = 'sine';
+                thud.frequency.setValueAtTime(300, ctx.currentTime);
+                thud.frequency.exponentialRampToValueAtTime(60, ctx.currentTime + 0.1);
+                thudGain.gain.setValueAtTime(0.8, ctx.currentTime);
+                thudGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+                thud.start(ctx.currentTime); thud.stop(ctx.currentTime + 0.35);
+
+                // Noise burst
+                const bufLen = Math.floor(ctx.sampleRate * 0.12);
+                const noiseBuf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+                const nd = noiseBuf.getChannelData(0);
+                for (let i = 0; i < bufLen; i++) nd[i] = Math.random() * 2 - 1;
+                const noise = ctx.createBufferSource();
+                noise.buffer = noiseBuf;
+                const noiseFilter = ctx.createBiquadFilter();
+                noiseFilter.type = 'lowpass'; noiseFilter.frequency.value = 600;
+                const noiseGain = ctx.createGain();
+                noise.connect(noiseFilter); noiseFilter.connect(noiseGain); noiseGain.connect(comp);
+                noiseGain.gain.setValueAtTime(0.35, ctx.currentTime);
+                noiseGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+                noise.start(ctx.currentTime);
+
+                // High ping
+                const ping = ctx.createOscillator();
+                const pingGain = ctx.createGain();
+                ping.connect(pingGain); pingGain.connect(comp);
+                ping.type = 'sine'; ping.frequency.value = 1760;
+                pingGain.gain.setValueAtTime(0, ctx.currentTime + 0.06);
+                pingGain.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 0.1);
+                pingGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.0);
+                ping.start(ctx.currentTime + 0.06); ping.stop(ctx.currentTime + 1.0);
+
+                // Harmony ping
+                const ping2 = ctx.createOscillator();
+                const ping2Gain = ctx.createGain();
+                ping2.connect(ping2Gain); ping2Gain.connect(comp);
+                ping2.type = 'sine'; ping2.frequency.value = 1320;
+                ping2Gain.gain.setValueAtTime(0, ctx.currentTime + 0.1);
+                ping2Gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.14);
+                ping2Gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.1);
+                ping2.start(ctx.currentTime + 0.1); ping2.stop(ctx.currentTime + 1.1);
+            } catch(e) {}
+        }
+
+        const COUNTDOWN_SECONDS = 3;
+
+        let dots = {};
+        let state = 'waiting'; // waiting | collecting | suspense | selected
+        let countdownInterval = null;
+        let countdownStart = null;
+
+        document.getElementById('reset-btn').addEventListener('touchend', (e) => {
+            e.stopPropagation();
+            reset();
+        });
+
+        // ── DOM helpers ───────────────────────────────────────────────
+
+        const PHRASES = [
+            'Vertraue dem Screen. Er lügt nicht.',
+            'Einfach. Schnell. Unerbittlich.',
+            'Wer nicht tippt, hat schon verloren',
+            'Du bist bereit. Ob du willst oder nicht.',
+            'Einer von euch wird es bereuen',
+            'Der Finger lügt nicht',
+            'Tippt, wenn ihr euch traut',
+            'Was auch immer passiert — es war fair',
+            'Finger. Jetzt.',
+            'Ran an den Screen',
+            'Los. Tippt. Zittert.',
+            'Möge das Glück mit euch sein',
+            'Einer muss es tun',
+            'Hauptsache, du bist es nicht',
+            'Viel Glück. Du wirst es brauchen.',
+            'Das Orakel erwacht',
+            'Alle. Jetzt.',
+            'Finger an den Screen. Augen zu.',
+            'Tippt. Zittert. Verliert.',
+            'Ein Finger, ein Schicksal',
+            'Winter is coming. Für einen von euch.',
+            'In a world where one must be chosen...',
+            'To infinity — und einer bleibt zurück',
+            'Freiheit endet, wo der Finger beginnt',
+            'Komm schon. Es tut nur kurz weh.',
+            'Ihr wisst, dass es euch treffen wird',
+            'Wer hat Angst? Tippt trotzdem.',
+            'Zeigt her eure Finger',
+            'Legt eure Hoffnung auf den Screen',
+            'Irgendwo weint gerade ein Engel. Für den Auserwählten.',
+            'Game over für einen. Loading...',
+            'Der Screen wählt. Ihr gehorcht.',
+            'Einer von euch hat heute Pech. Der Screen weiß es schon.',
+            'Früher hat man das mit Schere, Stein, Papier gemacht',
+            'Enie meenie minie... nein, das entscheidet jetzt der Screen',
+            'Glaub an dich. Der Screen tut es nicht.',
+            'Kopf hoch. Finger runter. Augen zu.',
+            'Heute wird alles gut. Für alle außer einem.',
+            'Hinweis: Das Gerät haftet nicht für emotionalen Schaden',
+            'Es war einmal ein Finger, der alles verlor',
+            'Wer wird es sein? Die Nation hält den Atem an!',
+            'Meine Damen und Herren — willkommen zum Ereignis des Abends!',
+            'Freiheit ist die Illusion vor dem Tippen',
+            'Was ist ein Finger ohne Screen? Eine offene Frage.',
+            'Alle verdächtig. Einer schuldig.',
+            'Tatwaffe: Zeigefinger. Täter: noch unbekannt.',
+            'Ihr seid alle toll. Einer ist es trotzdem.',
+            'Kein Druck — außer dem auf den Screen',
+            'Nichts ist sicher außer Tod, Steuern und diesem Screen',
+            'Heute auf der Speisekarte: Pech für einen',
+            'Neu: Schicksal auf Knopfdruck. Jetzt tippen.',
+            'Zufriedenheit nicht garantiert. Ergebnis schon.',
+            'Jede Stimme zählt. Außer die des Verlierers.',
+            'Das Ergebnis wird nicht angefochten',
+            'Einsteigen. Anschnallen. Verlieren.',
+            'Alle Mann an Deck. Einer geht von Bord.',
+            'Die Sterne stehen günstig. Für alle außer einem.',
+            'Spoiler: es trifft einen von euch',
+            'Nicht für schwache Nerven. Und schwache Finger.',
+            'Abrakadabra — einer von euch hat heute kein Glück',
+            'Alle rein — einer kommt nicht raus',
+            'Willkommen zur täglichen Ungerechtigkeit',
+            'Fairness ist eine Illusion. Der Screen nicht.',
+        ];
+
+        const SINGLE_PHRASES = [
+            'Mehr Finger hinzufügen...',
+            'Alleine macht das keinen Spaß.',
+            'Wer kommt noch?',
+            'Du brauchst Gesellschaft.',
+            'Noch nicht. Mehr Finger.',
+            'Einer allein entscheidet nichts.',
+            'Hol jemanden dazu.',
+            'Noch ein Finger, bitte.',
+        ];
+        let singlePhraseIndex = 0;
+        function nextSinglePhrase() {
+            const phrase = SINGLE_PHRASES[singlePhraseIndex % SINGLE_PHRASES.length];
+            singlePhraseIndex++;
+            return phrase;
+        }
+
+        function nextPhrase() {
+            return PHRASES[Math.floor(Math.random() * PHRASES.length)];
+        }
+
+        showMessage(nextPhrase());
+
+        function showMessage(text) {
+            const el = document.getElementById('message');
+            el.style.opacity = text ? '1' : '0';
+            el.innerHTML = text;
+        }
+
+        function showCountdown(show) {
+            document.getElementById('countdown').style.display = show ? 'flex' : 'none';
+        }
+
+        function updateCountdownRing(fraction) {
+            const seconds = Math.ceil(COUNTDOWN_SECONDS * (1 - fraction));
+            document.getElementById('countdown-text').textContent = seconds;
+            document.getElementById('countdown-bar').style.width = ((1 - fraction) * 100) + '%';
+        }
+
+        // ── Dot management ────────────────────────────────────────────
+
+        const CIRCLE_GRID = [
+            [1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1],
+            [1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1],
+            [1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1],
+            [1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1],
+            [1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1],
+            [1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1],
+            [1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1],
+            [1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1],
+            [1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1],
+            [1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1],
+            [1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1],
+            [1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1],
+            [1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1],
+            [1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1],
+            [1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1],
+        ];
+        const DOT_PX = 4; // pixel size per grid cell
+
+        function paintDot(canvas, color = '#2d1a00') {
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const P = DOT_PX;
+            ctx.fillStyle = color;
+            for (let row = 0; row < 28; row++) {
+                let left = -1, right = -1;
+                for (let col = 0; col < 28; col++) {
+                    if (CIRCLE_GRID[row][col] === 0) {
+                        if (left === -1) left = col;
+                        right = col;
+                    }
+                }
+                if (left !== -1) {
+                    for (let col = left; col <= right; col++) {
+                        ctx.fillRect(col * P, row * P, P, P);
+                    }
+                }
+            }
+        }
+
+        function moveDotGlow(dotEl) {
+            let glow = document.getElementById('dot-glow');
+            if (!glow) {
+                glow = document.createElement('div');
+                glow.id = 'dot-glow';
+                glow.style.cssText = 'position:fixed;pointer-events:none;z-index:4;border-radius:50%;';
+                document.body.appendChild(glow);
+            }
+            const size = 180;
+            const x = parseFloat(dotEl.style.left);
+            const y = parseFloat(dotEl.style.top);
+            glow.style.width  = size + 'px';
+            glow.style.height = size + 'px';
+            glow.style.left   = (x - size / 2) + 'px';
+            glow.style.top    = (y - size / 2) + 'px';
+            glow.style.background = 'radial-gradient(circle, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.2) 40%, rgba(255,255,255,0.05) 65%, transparent 80%)';
+        }
+
+        function removeDotGlow() {
+            const glow = document.getElementById('dot-glow');
+            if (glow) glow.remove();
+        }
+
+        function repaintAllDots(color = '#2d1a00') {
+            Object.keys(dots).forEach(id => {
+                const el = document.getElementById('dot-' + id);
+                if (el) paintDot(el, color);
+            });
+        }
+
+        // ── Corner ornaments ──────────────────────────────────────────
+        (function() {
+            const grid = [
+                [1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0],
+                [1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            ];
+            const P = 5;
+            ['tl','tr','bl','br'].forEach(id => {
+                const c = document.getElementById('corner-' + id);
+                const ctx = c.getContext('2d');
+                ctx.fillStyle = '#2d1a00';
+                grid.forEach((row, y) => row.forEach((val, x) => {
+                    if (val) ctx.fillRect(x * P, y * P, P, P);
+                }));
+            });
+        })();
+
+        function createDot(id, x, y) {
+            const el = document.createElement('canvas');
+            el.className = 'dot';
+            el.id = 'dot-' + id;
+            el.width = 28 * DOT_PX;
+            el.height = 28 * DOT_PX;
+            el.style.left = x + 'px';
+            el.style.top = y + 'px';
+            paintDot(el);
+            document.body.appendChild(el);
+            requestAnimationFrame(() => el.classList.add('active'));
+            return el;
+        }
+
+        function removeDot(id) {
+            const el = document.getElementById('dot-' + id);
+            if (el) el.remove();
+        }
+
+        // ── Countdown ─────────────────────────────────────────────────
+
+        function startCountdown() {
+            showCountdown(true);
+            updateCountdownRing(0);
+            countdownStart = Date.now();
+            repaintAllDots('#2d1a00');
+
+            countdownInterval = setInterval(() => {
+                const elapsed = (Date.now() - countdownStart) / 1000;
+                const fraction = elapsed / COUNTDOWN_SECONDS;
+
+                if (fraction >= 1) {
+                    clearInterval(countdownInterval);
+                    showCountdown(false);
+                    startSuspense();
+                } else {
+                    updateCountdownRing(fraction);
+                }
+            }, 50);
+        }
+
+        function stopCountdown() {
+            clearInterval(countdownInterval);
+            showCountdown(false);
+            repaintAllDots();
+        }
+
+        // ── Suspense phase ────────────────────────────────────────────
+
+        function startSuspense() {
+            state = 'suspense';
+            vibrate([10, 8, 10, 8, 18]);
+            playSuspense();
+            showMessage('');
+            document.body.style.transition = 'background 2s ease';
+            document.body.style.background = '#0f0f1a';
+            document.getElementById('vignette').style.background = 'radial-gradient(ellipse at center, transparent 25%, rgba(5, 5, 15, 0.85) 100%)';
+            ['tl','tr','bl','br'].forEach(id => {
+                document.getElementById('corner-' + id).style.opacity = '0';
+            });
+            repaintAllDots('#e8e2dc');
+
+            const ids = Object.keys(dots);
+            const winnerId = ids[Math.floor(Math.random() * ids.length)];
+
+            // Sortiere Punkte nach Winkel um Bildschirmmitte → Kreisreihenfolge
+            const cx = window.innerWidth / 2;
+            const cy = window.innerHeight / 2;
+            const sorted = [...ids].sort((a, b) => {
+                const angleA = Math.atan2(dots[a].y - cy, dots[a].x - cx);
+                const angleB = Math.atan2(dots[b].y - cy, dots[b].x - cx);
+                return angleA - angleB;
+            });
+
+            const duration = 5000;
+            const startDelay = 350;
+            const endDelay = 40;
+            let elapsed = 0;
+            let index = 0;
+            let lastHighlighted = null;
+
+            function flash() {
+                if (state !== 'suspense') return;
+
+                if (lastHighlighted !== null) {
+                    const prev = document.getElementById('dot-' + lastHighlighted);
+                    if (prev) paintDot(prev, '#e8e2dc');
+                    else removeDotGlow();
+                    lastHighlighted = null;
+                }
+
+                if (elapsed >= duration) {
+                    removeDotGlow();
+                    reveal(winnerId);
+                    return;
+                }
+
+                const currentId = sorted[index % sorted.length];
+                const el = document.getElementById('dot-' + currentId);
+                if (el) {
+                    paintDot(el, '#ffffff');
+                    moveDotGlow(el);
+                }
+                lastHighlighted = currentId;
+                index++;
+
+                const progress = elapsed / duration;
+                playFlash(progress);
+                vibrate(Math.round(12 - progress * 7));
+                const delay = startDelay + (endDelay - startDelay) * progress;
+                elapsed += delay;
+
+                setTimeout(flash, delay);
+            }
+
+            flash();
+        }
+
+        // ── Reveal ────────────────────────────────────────────────────
+
+        function reveal(winnerId) {
+            state = 'selected';
+            vibrate([30, 20, 80]);
+            playReveal();
+
+            const flashEl = document.createElement('div');
+            flashEl.style.cssText = 'position:fixed;inset:0;background:black;pointer-events:none;animation:screen-flash 0.6s ease-out forwards;z-index:50';
+            document.body.appendChild(flashEl);
+            setTimeout(() => flashEl.remove(), 600);
+
+            removeDotGlow();
+            const ids = Object.keys(dots);
+            ids.forEach(id => {
+                const el = document.getElementById('dot-' + id);
+                if (!el) return;
+                if (id === winnerId) {
+                    paintDot(el, '#ffffff');
+                    el.classList.add('winner');
+                } else {
+                    paintDot(el, '#0f0f1a');
+                    el.classList.add('loser');
+                }
+            });
+
+            setTimeout(() => {
+                const btn = document.getElementById('reset-btn');
+                btn.style.background = '#ffffff';
+                btn.style.color = '#000000';
+                btn.style.borderColor = '#000000';
+                btn.style.display = 'block';
+                btn.style.pointerEvents = 'auto';
+            }, 1200);
+        }
+
+        // ── Reset ─────────────────────────────────────────────────────
+
+        function reset() {
+            stopCountdown();
+            state = 'waiting';
+            Object.keys(dots).forEach(id => removeDot(id));
+            dots = {};
+            const btn = document.getElementById('reset-btn');
+            btn.style.display = 'none';
+            btn.style.pointerEvents = 'none';
+            btn.style.background = '#000000';
+            btn.style.color = '#ffffff';
+            btn.style.borderColor = '#ffffff';
+            document.body.style.transition = 'background 0.6s ease';
+            document.body.style.background = '#ffffff';
+            document.getElementById('vignette').style.background = '';
+            ['tl','tr','bl','br'].forEach(id => {
+                document.getElementById('corner-' + id).style.opacity = '1';
+            });
+            showMessage(nextPhrase());
+        }
+
+        // ── Touch events ──────────────────────────────────────────────
+
+        document.addEventListener('touchstart', (e) => {
+            if (e.target.id === 'reset-btn') return;
+            e.preventDefault();
+            if (state === 'selected' || state === 'suspense') return;
+
+            Array.from(e.changedTouches).forEach(touch => {
+                dots[touch.identifier] = { x: touch.clientX, y: touch.clientY };
+                createDot(touch.identifier, touch.clientX, touch.clientY);
+                vibrate(8);
+                playTick(Object.keys(dots).length);
+            });
+
+            const count = Object.keys(dots).length;
+            stopCountdown();
+
+            if (count >= 2) {
+                state = 'collecting';
+                showMessage('');
+                startCountdown();
+            } else {
+                showMessage(nextSinglePhrase());
+            }
+        }, { passive: false });
+
+        document.addEventListener('touchend', (e) => {
+            if (e.target.id === 'reset-btn') return;
+            e.preventDefault();
+            if (state === 'selected') return;
+
+            Array.from(e.changedTouches).forEach(touch => {
+                delete dots[touch.identifier];
+                removeDot(touch.identifier);
+            });
+
+            const count = Object.keys(dots).length;
+
+            if (state === 'suspense') {
+                if (count < 2) {
+                    state = 'waiting';
+                    removeDotGlow();
+                    document.body.style.transition = 'background 0.6s ease';
+                    document.body.style.background = '#ffffff';
+                    document.getElementById('vignette').style.background = '';
+                    ['tl','tr','bl','br'].forEach(id => {
+                        document.getElementById('corner-' + id).style.opacity = '1';
+                    });
+                    repaintAllDots('#2d1a00');
+                    showMessage(nextPhrase());
+                }
+                return;
+            }
+
+            stopCountdown();
+
+            if (count >= 2) {
+                startCountdown();
+            } else if (count === 1) {
+                state = 'collecting';
+                showMessage(nextSinglePhrase());
+            } else {
+                state = 'waiting';
+                showMessage(nextPhrase());
+            }
+        }, { passive: false });
+
+        document.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (state === 'selected') return;
+            Array.from(e.changedTouches).forEach(touch => {
+                const id = touch.identifier;
+                if (!dots[id]) return;
+                dots[id] = { x: touch.clientX, y: touch.clientY };
+                const el = document.getElementById('dot-' + id);
+                if (el) {
+                    el.style.left = touch.clientX + 'px';
+                    el.style.top = touch.clientY + 'px';
+                }
+            });
+        }, { passive: false });
+
+        document.addEventListener('touchcancel', (e) => {
+            e.preventDefault();
+            if (state === 'selected') return;
+            Array.from(e.changedTouches).forEach(touch => {
+                delete dots[touch.identifier];
+                removeDot(touch.identifier);
+            });
+            const count = Object.keys(dots).length;
+            if (state === 'suspense') {
+                if (count < 2) {
+                    state = 'waiting';
+                    removeDotGlow();
+                    document.body.style.transition = 'background 0.6s ease';
+                    document.body.style.background = '#ffffff';
+                    document.getElementById('vignette').style.background = '';
+                    ['tl','tr','bl','br'].forEach(id => {
+                        document.getElementById('corner-' + id).style.opacity = '1';
+                    });
+                    repaintAllDots('#2d1a00');
+                    showMessage(nextPhrase());
+                }
+                return;
+            }
+            stopCountdown();
+            if (count === 0) {
+                state = 'waiting';
+                showMessage(nextPhrase());
+            }
+        }, { passive: false });
+
+        // ── App Icon ──────────────────────────────────────────────────
+        document.fonts.ready.then(() => {
+            const size = 180, SCALE = 4, S = size * SCALE;
+
+            // Render at 4× size, then scale down — eliminates anti-aliasing
+            const tmp = document.createElement('canvas');
+            tmp.width = S; tmp.height = S;
+            const tctx = tmp.getContext('2d');
+            tctx.fillStyle = '#ffffff';
+            tctx.fillRect(0, 0, S, S);
+
+            tctx.textAlign = 'center';
+            tctx.textBaseline = 'alphabetic';
+            let fs = 28 * SCALE;
+            tctx.font = `${fs}px "Press Start 2P"`;
+            while (tctx.measureText('Chooser').width > (size - 28) * SCALE && fs > 8) {
+                fs--;
+                tctx.font = `${fs}px "Press Start 2P"`;
+            }
+
+            const P = 5 * SCALE, gap = 14 * SCALE;
+            const totalH = fs + gap + 18 * P;
+            const startY = Math.floor((S - totalH) / 2);
+            const textY = startY + fs;
+            const mascotTopY = textY + gap;
+            const mascotX = Math.floor((S - 24 * P) / 2);
+
+            const OL = 2 * SCALE;
+            [[-1,-1],[0,-1],[1,-1],[-1,0],[1,0],[-1,1],[0,1],[1,1]].forEach(([ox,oy]) => {
+                tctx.fillStyle = '#2d1a00';
+                tctx.fillText('Chooser', S/2 + ox*OL, textY + oy*OL);
+            });
+            tctx.fillStyle = '#D97757';
+            tctx.fillText('Chooser', S/2, textY);
+
+            // Snap anti-aliased pixels to exact palette colors
+            const pal = [[255,255,255],[0x2d,0x1a,0x00],[0xD9,0x77,0x57]];
+            const region = tctx.getImageData(0, 0, S, mascotTopY);
+            const d = region.data;
+            for (let i = 0; i < d.length; i += 4) {
+                const r = d[i], g = d[i+1], b = d[i+2];
+                let best = 0, bd = Infinity;
+                pal.forEach(([pr,pg,pb], j) => {
+                    const dd = (r-pr)**2+(g-pg)**2+(b-pb)**2;
+                    if (dd < bd) { bd = dd; best = j; }
+                });
+                d[i]=pal[best][0]; d[i+1]=pal[best][1]; d[i+2]=pal[best][2]; d[i+3]=255;
+            }
+            tctx.putImageData(region, 0, 0);
+
+            const iconMascot = [
+                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1],
+                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1],
+                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1],
+                [0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0],
+                [0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0],
+                [0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0],
+                [0,0,0,1,1,1,1,2,2,1,1,1,1,1,1,2,2,1,1,1,1,0,0,0],
+                [0,0,0,1,1,1,1,2,2,1,1,1,1,1,1,2,2,1,1,1,1,0,0,0],
+                [0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0],
+                [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0],
+                [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0],
+                [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0],
+                [0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0],
+                [0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0],
+                [0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0],
+                [0,0,0,0,1,1,0,1,1,0,0,0,0,0,0,1,1,0,1,1,0,0,0,0],
+                [0,0,0,0,1,1,0,1,1,0,0,0,0,0,0,1,1,0,1,1,0,0,0,0],
+                [0,0,0,0,1,1,0,1,1,0,0,0,0,0,0,1,1,0,1,1,0,0,0,0],
+            ];
+            iconMascot.forEach((row, y) => row.forEach((val, x) => {
+                if (!val) return;
+                tctx.fillStyle = val === 2 ? '#2d1a00' : '#D97757';
+                tctx.fillRect(mascotX + x*P, mascotTopY + y*P, P, P);
+            }));
+
+            // Scale down 4:1 with nearest-neighbor
+            const c = document.createElement('canvas');
+            c.width = size; c.height = size;
+            const ctx = c.getContext('2d');
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(tmp, 0, 0, size, size);
+
+            const link = document.createElement('link');
+            link.rel = 'apple-touch-icon';
+            link.href = c.toDataURL('image/png');
+            document.head.appendChild(link);
+        });
+    </script>
+</body>
+</html>
